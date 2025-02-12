@@ -1,20 +1,13 @@
 name: CD Pipeline
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
 
 jobs:
-  test:  # CI job (ensure tests pass before deployment)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Run tests
-        run: pytest  # Replace with your test command
-
-  deploy:  # CD job (should only run if 'test' job passes)
-    needs: test  # This ensures deployment only runs if CI (test) passes
+  deploy:  # CD job (only runs if CI passed)
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}  # Ensures CD runs only if CI passed
     runs-on: ubuntu-latest
 
     steps:
