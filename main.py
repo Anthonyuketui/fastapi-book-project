@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(ai_router, prefix=settings.API_PREFIX)
+app.include_router(api_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/healthcheck")
