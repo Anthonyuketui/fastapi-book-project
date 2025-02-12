@@ -4,7 +4,17 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  test:  # CI job (ensure tests pass before deployment)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run tests
+        run: pytest  # Replace with your test command
+
+  deploy:  # CD job (should only run if 'test' job passes)
+    needs: test  # This ensures deployment only runs if CI (test) passes
     runs-on: ubuntu-latest
 
     steps:
@@ -18,51 +28,15 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e  # Exit script if any command fails
+            set -e  # Exit if any command fails
 
             echo "🔹 Updating system..."
             sudo apt-get update -y
 
-            echo "🔹 Installing dependencies..."
-            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
-              apt-transport-https ca-certificates curl software-properties-common
-
-            echo "🔹 Checking if Docker is installed..."
-            if ! command -v docker &> /dev/null; then
-              echo "🔹 Installing Docker..."
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-              sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-              sudo apt-get update -y
-              sudo apt-get install -y -q docker-ce docker-ce-cli containerd.io docker-compose-plugin
-              sudo systemctl enable --now docker
-              sudo usermod -aG docker $USER
-            fi
-
-            echo "🔹 Verifying Docker installation..."
-            docker --version
-            docker compose version
-
-            echo "🔹 Restarting Docker..."
-            sudo systemctl restart docker
-
-            echo "🔹 Navigating to project directory..."
-            cd /home/${{ secrets.EC2_USER }}/
-
-            echo "🔹 Checking if repository exists..."
-            if [ ! -d "fastapi-book-project" ]; then
-              echo "🔹 Cloning repository..."
-              git clone https://github.com/Anthonyuketui/fastapi-book-project
-            fi
-
-            cd fastapi-book-project
-
-            echo "🔹 Cleaning up repository..."
-            git fetch --all
-            git reset --hard origin/main
-            git clean -fd
-
             echo "🔹 Deploying application..."
+            cd /home/ubuntu/fastapi-book-project
+            git pull origin main
             sudo docker compose down
             sudo docker compose up -d --build --remove-orphans
 
-            echo "✅ Deployment completed successfully!"
+            echo "✅ Deployment successful!"
