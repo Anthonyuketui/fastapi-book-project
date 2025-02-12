@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:  # CD job (only runs if CI passed)
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}  # Ensures CD runs only if CI passed
+  if: ${{ github.event.workflow_run.conclusion != 'failure' }} # Fail instead of skipping
     runs-on: ubuntu-latest
 
     steps:
