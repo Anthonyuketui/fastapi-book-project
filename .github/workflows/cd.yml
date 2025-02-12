@@ -1,0 +1,69 @@
+name: CD Pipeline
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e  # Exit script if any command fails
+
+            echo "🔹 Updating system..."
+            sudo apt-get update -y
+
+            echo "🔹 Installing dependencies..."
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
+              apt-transport-https ca-certificates curl software-properties-common
+
+            echo "🔹 Checking if Docker is installed..."
+            if ! command -v docker &> /dev/null; then
+              echo "🔹 Installing Docker..."
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+              sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+              sudo apt-get update -y
+              sudo apt-get install -y -q docker-ce docker-ce-cli containerd.io docker-compose-plugin
+              sudo systemctl enable --now docker
+              sudo usermod -aG docker $(whoami)
+            fi
+
+            echo "🔹 Verifying Docker installation..."
+            docker --version
+            docker compose version
+
+            echo "🔹 Ensuring Docker is running..."
+            sudo systemctl is-active --quiet docker || sudo systemctl restart docker
+
+            echo "🔹 Navigating to project directory..."
+            cd /home/ubuntu/
+
+            echo "🔹 Checking if repository exists..."
+            if [ ! -d "fastapi-book-project" ]; then
+              echo "🔹 Cloning repository..."
+              git clone https://github.com/Anthonyuketui/fastapi-book-project
+            fi
+
+            cd fastapi-book-project
+
+            echo "🔹 Cleaning up repository..."
+            git fetch --all
+            git reset --hard origin/main
+            git clean -fd
+
+            echo "🔹 Deploying application..."
+            sudo docker compose down
+            sudo docker system prune -f  # Clean up unused containers/images
+            sudo docker compose up -d --build --remove-orphans
+
+            echo "✅ Deployment completed successfully!"
