@@ -50,7 +50,7 @@ async def get_books() -> OrderedDict[int, Book]:
 async def get_book(book_id: int):
     book = db.books.get(book_id)
     if not book:
-        raise HTTPException(
+        raise HTTPxception(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Book not found"
         )
