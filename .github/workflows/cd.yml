@@ -31,7 +31,12 @@ jobs:
             # Add the SSH user to the Docker group
             sudo usermod -aG docker ${{ secrets.EC2_USER}}
             
+            cd /home/ubuntu/fastapi-book-project
             git fetch --all
             git reset --hard origin/main
             git pull origin main
+
+            # Restart the Docker container
+            docker-compose down
+            docker-compose up -d --build
             
