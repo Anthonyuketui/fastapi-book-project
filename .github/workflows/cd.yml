@@ -30,3 +30,8 @@ jobs:
 
             # Add the SSH user to the Docker group
             sudo usermod -aG docker ${{ secrets.EC2_USER}}
+            
+            git fetch --all
+            git reset --hard origin/main
+            git pull origin main
+            
